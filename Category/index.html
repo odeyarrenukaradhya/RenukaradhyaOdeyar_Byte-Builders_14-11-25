@@ -1,0 +1,335 @@
+<!doctype html>
+<html lang="en" class="bg-baseBg text-slate-800">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Dashboard · Categories · Category Management — Clean Green Accent</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    // Tailwind config: use valid JS keys (no leading #). Keep green as an accent only.
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            accentGreen: "#1b5e20",
+            accentGreenLight: "#c8e6c9",
+            baseBg: "#e8f5e9",
+            baseSidebar: "#f1f8f4"
+          },
+          borderRadius: { 'xl': '1rem' },
+          boxShadow: { 'card': '0 6px 20px rgba(20,23,28,0.08)' }
+        }
+      }
+    }
+  </script>
+  <style>
+    /* table header gradient uses the defined hex values (this is plain CSS) */
+    .table-head { background: linear-gradient(90deg, #e6f6ea, #d7efe0); color: #0f3d2e; }
+    @media (max-width: 768px) { .hide-sm { display: none; } }
+  </style>
+</head>
+<body class="bg-baseBg text-slate-800 font-sans">
+  <div class="min-h-screen flex">
+    <!-- Sidebar (kept minimal) -->
+    <aside class="w-72 bg-baseSidebar p-6 hidden md:block border-r border-slate-200">
+      <a href="#" class="flex items-center gap-3 text-slate-900 mb-8">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white font-bold">V</div>
+        <div>
+          <div class="text-lg font-semibold">User Name</div>
+          <div class="text-sm text-slate-500">User Dashboard</div>
+        </div>
+      </a>
+
+      <nav class="space-y-1 text-sm">
+        <a class="flex items-center gap-3 p-2 rounded-lg hover:bg-accentGreenLight/60" href="#">Dashboard</a>
+        <a class="flex items-center gap-3 p-2 rounded-lg hover:bg-accentGreenLight/60" href="#">Posts</a>
+        <a class="flex items-center gap-3 p-2 rounded-lg bg-accentGreen/10 text-accentGreen font-semibold" href="#">Categories</a>
+        <a class="flex items-center gap-3 p-2 rounded-lg hover:bg-accentGreenLight/60" href="#">Media</a>
+      </nav>
+    </aside>
+
+    <!-- Main -->
+    <main class="flex-1 p-6">
+      <header class="flex items-center justify-between mb-6">
+        <div>
+          <div class="text-xs text-slate-500">Dashboard</div>
+          <div class="text-2xl font-semibold">Category Management</div>
+        </div>
+        <div class="flex items-center gap-3">
+          <input id="search" type="search" placeholder="Search categories..." class="border border-slate-200 rounded-lg px-3 py-2 w-64 bg-baseBg text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-greenAccent/30" />
+          <button id="newCategory" class="bg-accentGreen text-white px-4 py-2 rounded-lg shadow-sm hover:bg-accentGreen/90">New Category</button>
+        </div>
+      </header>
+
+      <div class="mb-4 flex items-center justify-between">
+        <div class="text-sm text-slate-600">Manage categories and their hierarchy. Create parent/child categories, toggle visibility, and reorder.</div>
+        <div class="flex items-center gap-3">
+          <select id="visibilityFilter" class="border border-slate-200 rounded-lg px-3 py-2 text-sm bg-baseBg text-slate-700">
+            <option value="all">All</option>
+            <option value="visible">Visible</option>
+            <option value="hidden">Hidden</option>
+          </select>
+          <button id="bulkDelete" class="bg-red-50 text-red-600 border border-red-100 px-3 py-2 rounded-lg text-sm disabled:opacity-50" disabled>Delete selected</button>
+        </div>
+      </div>
+
+      <section class="bg-baseBg rounded-xl p-4 shadow-card border border-slate-100">
+        <div class="overflow-x-auto">
+          <table class="min-w-full text-sm divide-y divide-slate-100">
+            <thead class="table-head text-slate-600">
+              <tr>
+                <th class="p-3 w-12 text-left"><input id="selectAll" type="checkbox" class="h-4 w-4" /></th>
+                <th class="p-3 text-left">Name</th>
+                <th class="p-3 hide-sm text-left">Slug</th>
+                <th class="p-3 hide-sm text-left">Parent</th>
+                <th class="p-3 text-left">Visibility</th>
+                <th class="p-3 text-left">Posts</th>
+                <th class="p-3 w-40 text-left">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="categoryTable" class="bg-baseBg divide-y divide-slate-100"></tbody>
+          </table>
+        </div>
+
+        <div class="mt-4 flex items-center justify-between">
+          <div class="text-sm text-slate-500">Showing <span id="visibleCount">0</span> of <span id="totalCount">0</span> categories</div>
+          <div class="flex items-center gap-2">
+            <button id="prevPage" class="px-3 py-1 rounded-md border disabled:opacity-50" disabled>Prev</button>
+            <button id="nextPage" class="px-3 py-1 rounded-md border">Next</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Add / Edit Modal -->
+      <div id="formModal" class="fixed inset-0 flex items-center justify-center bg-black/40 hidden">
+        <form id="categoryForm" class="bg-baseBg rounded-xl p-6 w-full max-w-md" onsubmit="return false;">
+          <h3 class="text-lg font-semibold mb-2" id="formTitle">New Category</h3>
+          <div class="space-y-3">
+            <div>
+              <label class="text-xs text-slate-500">Name</label>
+              <input id="catName" class="w-full border border-slate-200 rounded-md px-3 py-2" required />
+            </div>
+            <div>
+              <label class="text-xs text-slate-500">Slug</label>
+              <input id="catSlug" class="w-full border border-slate-200 rounded-md px-3 py-2" />
+            </div>
+            <div>
+              <label class="text-xs text-slate-500">Parent</label>
+              <select id="catParent" class="w-full border border-slate-200 rounded-md px-3 py-2">
+                <option value="">(No parent)</option>
+              </select>
+            </div>
+            <div class="flex items-center gap-3">
+              <label class="text-xs text-slate-500">Visibility</label>
+              <label class="inline-flex items-center gap-2"><input id="catVisible" type="checkbox" checked /> Visible</label>
+            </div>
+          </div>
+
+          <div class="mt-4 flex justify-end gap-3">
+            <button id="cancelForm" class="px-3 py-2 rounded-md border">Cancel</button>
+            <button id="saveForm" class="px-3 py-2 rounded-md bg-accentGreen text-white">Save</button>
+          </div>
+        </form>
+      </div>
+
+      <!-- Delete Confirmation Modal -->
+      <div id="confirmModal" class="fixed inset-0 flex items-center justify-center bg-black/40 hidden">
+        <div class="bg-baseBg rounded-xl p-5 w-full max-w-sm">
+          <h3 class="text-lg font-semibold mb-2">Delete category</h3>
+          <p class="text-sm text-slate-600 mb-4">Are you sure you want to delete the selected category(s)? Child categories will become top-level categories. This action cannot be undone.</p>
+          <div class="flex justify-end gap-3">
+            <button id="cancelDelete" class="px-3 py-2 rounded-md border">Cancel</button>
+            <button id="confirmDelete" class="px-3 py-2 rounded-md bg-red-600 text-white">Delete</button>
+          </div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+  <script>
+    // Sample seed data
+    const sample = [
+      {id:1,name:'Food',slug:'food',parent:null,visible:true,posts:34},
+      {id:2,name:'Travel',slug:'Travel',parent:null,visible:true,posts:20},
+      {id:3,name:'Health and Fitness',slug:'health and fitness',parent:null,visible:true,posts:12},
+      {id:4,name:'Fashion and Beauty',slug:'fashion',parent:null,visible:false,posts:5},
+      {id:5,name:'Personal Healthcare',slug:'personal',parent:null,visible:true,posts:15},
+      {id:6,name:'Sports',slug:'sport',parent:4,visible:true,posts:6},
+      {id:7,name:'Business and Marketing',slug:'Business',parent:null,visible:true,posts:8},
+      {id:8,name:'Tips',slug:'tips',parent:null,visible:true,posts:2}
+    ];
+
+    // State
+    let state = { categories: sample.slice(), page:1, perPage:6, query:'', filter:'all', selected:new Set(), editId:null };
+
+    // Refs
+    const table = document.getElementById('categoryTable');
+    const totalCountEl = document.getElementById('totalCount');
+    const visibleCountEl = document.getElementById('visibleCount');
+    const prev = document.getElementById('prevPage');
+    const next = document.getElementById('nextPage');
+    const selectAll = document.getElementById('selectAll');
+    const bulkDelete = document.getElementById('bulkDelete');
+    const search = document.getElementById('search');
+    const visibilityFilter = document.getElementById('visibilityFilter');
+
+    const formModal = document.getElementById('formModal');
+    const formTitle = document.getElementById('formTitle');
+    const catName = document.getElementById('catName');
+    const catSlug = document.getElementById('catSlug');
+    const catParent = document.getElementById('catParent');
+    const catVisible = document.getElementById('catVisible');
+    const cancelForm = document.getElementById('cancelForm');
+    const saveForm = document.getElementById('saveForm');
+
+    const confirmModal = document.getElementById('confirmModal');
+    const cancelDelete = document.getElementById('cancelDelete');
+    const confirmDelete = document.getElementById('confirmDelete');
+
+    // Helpers
+    function slugify(s){ return String(s).toLowerCase().trim().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,''); }
+    function applyFilters(){
+      let list = state.categories.slice();
+      if(state.filter==='visible') list = list.filter(c=>c.visible);
+      if(state.filter==='hidden') list = list.filter(c=>!c.visible);
+      if(state.query) list = list.filter(c => (c.name + c.slug).toLowerCase().includes(state.query.toLowerCase()));
+      return list;
+    }
+
+    function fillParentOptions(){
+      catParent.innerHTML = '<option value="">(No parent)</option>' + state.categories.filter(c=>c.id!==state.editId).map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
+    }
+
+    function render(){
+      const filtered = applyFilters();
+      const total = state.categories.length;
+      totalCountEl.textContent = total;
+      visibleCountEl.textContent = filtered.length;
+
+      const start = (state.page-1)*state.perPage;
+      const pageItems = filtered.slice(start, start + state.perPage);
+
+      table.innerHTML = pageItems.map(c => `
+        <tr data-id="${c.id}" class="hover:bg-accentGreenLight/60">
+          <td class="p-3"><input class="rowCheck h-4 w-4" type="checkbox" data-id="${c.id}" ${state.selected.has(c.id)?'checked':''}></td>
+          <td class="p-3">
+            <div class="font-medium">${escapeHtml(c.name)}</div>
+            <div class="text-xs text-slate-400">ID: ${c.id}</div>
+          </td>
+          <td class="p-3 hide-sm">${escapeHtml(c.slug)}</td>
+          <td class="p-3 hide-sm">${c.parent ? (state.categories.find(x=>x.id===c.parent)||{name:'-' }).name : '-'}</td>
+          <td class="p-3">
+            <button class="toggleVis px-2 py-1 text-xs rounded-md border" data-id="${c.id}">${c.visible? 'Visible':'Hidden'}</button>
+          </td>
+          <td class="p-3">${c.posts}</td>
+          <td class="p-3">
+            <div class="flex gap-2">
+              <button class="editBtn px-3 py-1 text-sm rounded-md border" data-id="${c.id}">Edit</button>
+              <button class="deleteBtn px-3 py-1 text-sm rounded-md border border-red-100 text-red-600" data-id="${c.id}">Delete</button>
+            </div>
+          </td>
+        </tr>
+      `).join('');
+
+      prev.disabled = state.page === 1;
+      next.disabled = start + state.perPage >= filtered.length;
+
+      selectAll.checked = pageItems.length>0 && pageItems.every(p=>state.selected.has(p.id));
+      bulkDelete.disabled = state.selected.size === 0;
+
+      // attach handlers
+      document.querySelectorAll('.rowCheck').forEach(cb => cb.addEventListener('change', ()=>{
+        const id = Number(cb.dataset.id);
+        if(cb.checked) state.selected.add(id); else state.selected.delete(id);
+        bulkDelete.disabled = state.selected.size === 0;
+        selectAll.checked = areAllVisibleSelected();
+      }));
+
+      document.querySelectorAll('.toggleVis').forEach(btn=> btn.addEventListener('click', ()=>{
+        const id = Number(btn.dataset.id);
+        const cat = state.categories.find(x=>x.id===id);
+        if(cat){ cat.visible = !cat.visible; render(); }
+      }));
+
+      document.querySelectorAll('.editBtn').forEach(btn => btn.addEventListener('click', ()=> openForm(Number(btn.dataset.id))));
+      document.querySelectorAll('.deleteBtn').forEach(btn => btn.addEventListener('click', ()=> { state.deleteTarget = [Number(btn.dataset.id)]; openConfirm(); }));
+    }
+
+    function areAllVisibleSelected(){
+      const filtered = applyFilters();
+      const start = (state.page-1)*state.perPage;
+      const pageItems = filtered.slice(start, start + state.perPage);
+      return pageItems.length>0 && pageItems.every(p=>state.selected.has(p.id));
+    }
+
+    // Controls
+    selectAll.addEventListener('change', ()=>{
+      const filtered = applyFilters();
+      const start = (state.page-1)*state.perPage;
+      const pageItems = filtered.slice(start, start + state.perPage);
+      pageItems.forEach(p => { if(selectAll.checked) state.selected.add(p.id); else state.selected.delete(p.id); });
+      render();
+    });
+
+    visibilityFilter.addEventListener('change', ()=>{ state.filter = visibilityFilter.value; state.page=1; state.selected.clear(); render(); });
+    search.addEventListener('input', ()=>{ state.query = search.value.trim(); state.page=1; render(); });
+
+    prev.addEventListener('click', ()=>{ if(state.page>1){ state.page--; render(); } });
+    next.addEventListener('click', ()=>{ state.page++; render(); });
+
+    document.getElementById('newCategory').addEventListener('click', ()=> openForm());
+    bulkDelete.addEventListener('click', ()=>{ if(state.selected.size===0) return; state.deleteTarget = Array.from(state.selected); openConfirm(); });
+
+    // Form modal
+    function openForm(id=null){
+      state.editId = id;
+      formTitle.textContent = id ? 'Edit Category' : 'New Category';
+      if(id){
+        const c = state.categories.find(x=>x.id===id);
+        catName.value = c.name; catSlug.value = c.slug; catParent.value = c.parent||''; catVisible.checked = c.visible;
+      } else { catName.value=''; catSlug.value=''; catParent.value=''; catVisible.checked=true; }
+      fillParentOptions();
+      formModal.classList.remove('hidden');
+    }
+    cancelForm.addEventListener('click', ()=> formModal.classList.add('hidden'));
+
+    saveForm.addEventListener('click', ()=>{
+      const name = catName.value.trim(); if(!name) return alert('Name required');
+      const slug = catSlug.value.trim() || slugify(name);
+      const parent = catParent.value ? Number(catParent.value) : null;
+      const visible = catVisible.checked;
+
+      if(state.editId){
+        const idx = state.categories.findIndex(x=>x.id===state.editId);
+        if(idx>-1){ state.categories[idx] = {...state.categories[idx], name, slug, parent, visible}; }
+      } else {
+        const newId = Math.max(0,...state.categories.map(c=>c.id))+1;
+        state.categories.unshift({id:newId,name,slug,parent,visible,posts:0});
+      }
+      state.editId = null;
+      formModal.classList.add('hidden');
+      render();
+    });
+
+    // Confirm modal
+    function openConfirm(){ confirmModal.classList.remove('hidden'); }
+    cancelDelete.addEventListener('click', ()=> confirmModal.classList.add('hidden'));
+    confirmDelete.addEventListener('click', ()=>{
+      const targets = state.deleteTarget || [];
+      // Remove targets, and reparent children to null
+      state.categories = state.categories.map(c => ({...c, parent: targets.includes(c.parent)? null : c.parent})).filter(c => !targets.includes(c.id));
+      targets.forEach(t=> state.selected.delete(t));
+      state.deleteTarget = null;
+      confirmModal.classList.add('hidden');
+      render();
+    });
+
+    // Helpers
+    function escapeHtml(s){ return String(s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":"&#39;"}[c]; }); }
+
+    // Init
+    render();
+  </script>
+</body>
+</html>
